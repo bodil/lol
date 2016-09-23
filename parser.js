@@ -44,9 +44,9 @@ const simpleGreedyExpr = p.seq(function*() {
   yield p.spaces1;
   const {value: tail} = yield p.maybe(greedyExpr);
   return {
-    type: "Scope",
+    type: "ExpressionSequence",
     expr: head,
-    nextExpr: tail
+    scope: tail
   };
 });
 
@@ -56,17 +56,17 @@ const letExpr = p.seq(function*() {
   const {value: name} = yield identifier;
   yield p.spaces1;
   const {value: valueExpr} = yield expr;
-  const {value: nextExpr} = yield p.maybe(p.seq(function*() {
+  const {value: scope} = yield p.maybe(p.seq(function*() {
     yield p.spaces1;
     const {value: e} = yield greedyExpr;
     return e;
   }));
-  const node = nextExpr === "" ? {type: "Empty"} : nextExpr;
+  const node = scope === "" ? {type: "Empty"} : scope;
   return {
     type: "Let",
     name,
     expr: valueExpr,
-    nextExpr: node
+    scope: node
   };
 });
 
