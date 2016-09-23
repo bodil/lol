@@ -25,13 +25,43 @@ const identifier = p.seq(function*() {
 const identExpr = p.seq(function*() {
   const {value: id} = yield identifier;
   return {
-    type: "Identifier",
+    type: "IdentifierExpr",
     name: id
   };
 });
 
+const funExpr = p.seq(function*() {
+  yield p.string("fun");
+  yield p.spaces1;
+  const {value: argName} = yield identifier;
+  yield p.spaces1;
+  const {value: body} = yield expr;
+  return {
+    type: "Fun",
+    argName,
+    body
+  }
+})
+
+const callExpr = p.seq(function*() {
+  yield p.string("(");
+  yield p.spaces;
+  const {value: fun} = yield expr;
+  yield p.spaces1;
+  const {value: arg} = yield expr;
+  yield p.spaces;
+  yield p.string(")");
+  return {
+    type: "Call",
+    fun,
+    arg
+  }
+})
+
 const expr = p.seq(function*() {
   const {value: e} = yield p.either([
+    funExpr,
+    callExpr,
     identExpr,
     float,
     string
@@ -39,10 +69,10 @@ const expr = p.seq(function*() {
   return e;
 });
 
-const simpleGreedyExpr = p.seq(function*() {
+const expressionSequence = p.seq(function*() {
   const {value: head} = yield expr;
   yield p.spaces1;
-  const {value: tail} = yield p.maybe(greedyExpr);
+  const {value: tail} = yield p.maybe(sequence);
   return {
     type: "ExpressionSequence",
     expr: head,
@@ -50,7 +80,7 @@ const simpleGreedyExpr = p.seq(function*() {
   };
 });
 
-const letExpr = p.seq(function*() {
+const letSequence = p.seq(function*() {
   yield p.string("let");
   yield p.spaces1;
   const {value: name} = yield identifier;
@@ -58,10 +88,10 @@ const letExpr = p.seq(function*() {
   const {value: valueExpr} = yield expr;
   const {value: scope} = yield p.maybe(p.seq(function*() {
     yield p.spaces1;
-    const {value: e} = yield greedyExpr;
+    const {value: e} = yield sequence;
     return e;
   }));
-  const node = scope === "" ? {type: "Empty"} : scope;
+  const node = scope === "" ? {type: "EmptySequence"} : scope;
   return {
     type: "Let",
     name,
@@ -70,14 +100,14 @@ const letExpr = p.seq(function*() {
   };
 });
 
-const empty = p.unit({
-  type: "Empty"
+const emptySequence = p.unit({
+  type: "EmptySequence"
 });
 
-const greedyExpr = p.either([
-  letExpr,
-  simpleGreedyExpr,
-  empty
+const sequence = p.either([
+  letSequence,
+  expressionSequence,
+  emptySequence
 ]);
 
 const block = p.seq(function*() {
@@ -86,7 +116,7 @@ const block = p.seq(function*() {
 
 module.exports = p.seq(function*() {
   yield p.spaces;
-  const {value: e} = yield greedyExpr;
+  const {value: e} = yield sequence;
   yield p.spaces;
   yield p.eof;
   return e;
